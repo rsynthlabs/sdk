@@ -2,6 +2,10 @@
 
 verifiable robot execution.
 
+sign. anchor. verify.
+
+![Execution flow: payload → sign → anchor → verify](./docs/assets/flow.svg)
+
 a robot performs an action. the payload — task, duration, metrics, outcome — is signed and its hash is anchored on base. anyone can verify a posted execution matches its on-chain record.
 
 intelligence layer for the robotics economy. `$R`.

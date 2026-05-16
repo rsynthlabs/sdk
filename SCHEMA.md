@@ -113,6 +113,8 @@ The contract stores no payload data — only the hash and the emitted event. Off
 
 ## 5. Verification flow
 
+![Execution flow](./docs/assets/flow.svg)
+
 Given an on-chain `ExecutionRecorded(agentId, payloadHash, ...)` event:
 
 1. Fetch the off-chain payload (URL provided by the agent or discovered via the registry).

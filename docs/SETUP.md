@@ -325,3 +325,15 @@ git push
 ```
 
 That's the deliverable.
+
+---
+
+## Foundry: forge-std `event log(string)` collision
+
+`forge-std/Test.sol` declares `event log(string)` (and other `log*` variants). In Solidity, events, state variables, and functions share a single per-contract namespace, and inherited identifiers count too — so any contract that inherits `Test` and declares its own `log` (as an event, a state variable, or anything else) will fail to compile with:
+
+```
+DeclarationError: Identifier already declared.
+```
+
+When naming identifiers in a forge-std-importing contract, avoid `log` — pick something descriptive (e.g. `ExecutionRecorded` for an event, `executionLog` for a state variable holding a contract instance).

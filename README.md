@@ -1,5 +1,7 @@
 # rsynth SDK
 
+intelligence layer for the robotics economy.
+
 verifiable robot execution. sign payloads, anchor on base, verify on-chain. zero hardware required.
 
 - v0.1 — days 1-7 shipped, 28 tests passing
@@ -43,6 +45,8 @@ see [`examples/lerobot_eval/`](./examples/lerobot_eval/) — end-to-end demo loa
 
 ## architecture
 
+![Execution flow](./docs/assets/flow.svg)
+
 ```
 payload (canonical JSON)
   -> keccak256
@@ -62,12 +66,12 @@ payload (canonical JSON)
 ## tests
 
 ```bash
-cd sdk && pip install -e '.[test]' && pytest -v
+# solidity tests + build the ABI artifact (required for python tests)
+cd contracts && forge build && forge test
+cd ../sdk && pip install -e '.[test]' && pytest -v
 ```
 
-expected: 28 tests passing.
-
-also: `forge test` in `contracts/` for solidity-side tests (4 forge tests including a python↔solidity cross-language vector).
+expected: 4 forge tests + 28 pytest tests, all passing.
 
 ## roadmap
 
@@ -80,5 +84,7 @@ also: `forge test` in `contracts/` for solidity-side tests (4 forge tests includ
 MIT. see [LICENSE](./LICENSE).
 
 ---
+
+robotics starts with $R.
 
 [@ResearchSynth](https://x.com/ResearchSynth) · [rsynth.ai](https://rsynth.ai)

@@ -1,6 +1,7 @@
 """Shared pytest fixtures and constants. See test_anchor.py and test_fetch.py."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -20,7 +21,13 @@ ARTIFACT = (
 @pytest.fixture(scope="session")
 def deployed():
     if not ARTIFACT.exists():
-        pytest.skip(f"Run `forge build` in contracts/ first (missing {ARTIFACT})")
+        print(
+            "\n[conftest] contracts/out/ExecutionLog.sol/ExecutionLog.json missing.\n"
+            "[conftest] Run `forge build` in contracts/ before pytest to enable\n"
+            "[conftest] 12 anchor/fetch/cli tests (currently SKIPPED).\n",
+            file=sys.stderr,
+        )
+        pytest.skip("forge artifact missing (run `forge build` in contracts/)")
     art = json.loads(ARTIFACT.read_text())
     w3 = Web3(EthereumTesterProvider())
     deployer = w3.eth.accounts[0]

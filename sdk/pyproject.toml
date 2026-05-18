@@ -26,6 +26,9 @@ example = [
 [tool.pytest.ini_options]
 testpaths = ["tests", "../examples"]
 
+[project.scripts]
+rsynth = "rsynth.cli:main"
+
 [project.urls]
 Homepage = "https://rsynth.ai"
 Repository = "https://github.com/rsynthlabs/sdk"

@@ -26,6 +26,7 @@ sdk/
 │       ├── sign.py           # sign(), verify() — EIP-191 over canonical bytes
 │       ├── anchor.py         # anchor() — submit ExecutionLog.record() tx
 │       ├── fetch.py          # verify_anchor() — read back ExecutionRecorded event
+│       ├── cli.py            # rsynth verify <tx_hash> — argparse wrapper
 │       └── errors.py
 └── tests/
     └── __init__.py
@@ -149,6 +150,18 @@ Module docstring: references SCHEMA.md §4.
 Define:
 - `def verify(tx_hash: str, rpc_url: str, contract_addr: str) -> tuple[str, bytes]:` — fetches the `ExecutionRecorded` event from the tx receipt at `tx_hash`, returns `(signer_address, payload_hash)`. Raises `AnchorNotFoundError` if the receipt has no matching event from `contract_addr`. Caller compares the returned hash against `payload_hash(payload)` to confirm anchor integrity. Re-exported at the package level as `verify_anchor` to avoid clashing with `sign.verify`.
 - `class AnchorNotFoundError(Exception)` — carries `tx_hash: str`.
+
+### `sdk/src/rsynth/cli.py`
+
+argparse-based CLI exposed as the `rsynth` console script after `pip install -e .`.
+
+- `rsynth verify <tx_hash> --rpc-url <url> --contract-addr <addr> [--payload payload.json]`
+  - Prints `signer`, `payload_hash`, `block`, `basescan` lines from the on-chain `ExecutionRecorded` event.
+  - With `--payload`, also validates the local JSON against the model, hashes it, and compares to the on-chain hash. Exits 2 on mismatch.
+
+Env-var fallbacks for the two URL/address flags: `RSYNTH_RPC_URL`, `RSYNTH_CONTRACT_ADDR`.
+
+Exit codes: `0=ok`, `1=CLI misuse`, `2=hash mismatch`, `3=anchor not found`, `4=RPC unreachable`, `5=invalid payload.json`.
 
 ### `sdk/src/rsynth/errors.py`
 

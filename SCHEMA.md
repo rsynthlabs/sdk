@@ -95,19 +95,20 @@ Method:
 
 ```solidity
 function record(
-  uint256 agentId,
   bytes32 payloadHash,
   bytes calldata signature
 ) external;
 ```
 
 Behavior:
-- Recover signer from `payloadHash` and `signature` (EIP-191).
-- Resolve `agentId` → registered address via ERC-8004 registry.
-- Require recovered signer == registered address.
-- Emit `ExecutionRecorded(agentId, payloadHash, blockTimestamp)`.
+- Wrap `payloadHash` with the EIP-191 prefix (`MessageHashUtils.toEthSignedMessageHash`).
+- Recover signer with `ECDSA.recover`.
+- Require recovered signer != `address(0)`.
+- Emit `ExecutionRecorded(signer, payloadHash, blockTimestamp)`.
 
-The contract stores no payload data — only the hash and the emitted event. Off-chain payloads are referenced by hash and retrieved from agent-provided storage (IPFS, S3, agent's own server — agent's choice).
+The contract stores no payload data — only the emitted event. Off-chain payloads are referenced by hash and retrieved from agent-provided storage (IPFS, S3, agent's own server — agent's choice).
+
+> **v0.1 scope.** The contract accepts any signer; linking signers to agent identities (ERC-8004 registry coupling) is deferred to v0.2. Verifiers cross-reference signer addresses out-of-band in v0.1.
 
 ---
 
@@ -115,7 +116,7 @@ The contract stores no payload data — only the hash and the emitted event. Off
 
 ![Execution flow](./docs/assets/flow.svg)
 
-Given an on-chain `ExecutionRecorded(agentId, payloadHash, ...)` event:
+Given an on-chain `ExecutionRecorded(signer, payloadHash, ...)` event:
 
 1. Fetch the off-chain payload (URL provided by the agent or discovered via the registry).
 2. Compute `keccak256(canonical_bytes(payload))`.

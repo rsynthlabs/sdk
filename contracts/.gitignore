@@ -1,0 +1,7 @@
+# Foundry build artifacts
+out/
+cache/
+broadcast/
+
+# Deployment artifacts (commit real deployments manually with `git add -f`)
+deployments/

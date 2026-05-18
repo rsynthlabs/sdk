@@ -1,26 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
 /// @title ExecutionLog — anchor robot execution payload hashes on-chain.
-/// @notice See SCHEMA.md §4. This is a scaffold; verification logic is not yet implemented.
+/// @notice See SCHEMA.md §4.
 contract ExecutionLog {
+    using MessageHashUtils for bytes32;
+
+    error InvalidSigner();
+
     event ExecutionRecorded(
-        uint256 indexed agentId,
+        address indexed signer,
         bytes32 indexed payloadHash,
         uint256 blockTimestamp
     );
 
-    /// @notice Anchor a signed payload hash. Reverts if signature does not match
-    ///         the address registered for `agentId` in the ERC-8004 registry.
-    /// @dev    Implementation pending. Currently no-op except event emission.
-    function record(
-        uint256 agentId,
-        bytes32 payloadHash,
-        bytes calldata signature
-    ) external {
-        // TODO: ERC-8004 registry lookup + EIP-191 recover + match check.
-        // For now, emit unconditionally so off-chain tooling can be tested.
-        signature; // silence unused-var warning
-        emit ExecutionRecorded(agentId, payloadHash, block.timestamp);
+    function record(bytes32 payloadHash, bytes calldata signature) external {
+        address signer = ECDSA.recover(
+            payloadHash.toEthSignedMessageHash(),
+            signature
+        );
+        if (signer == address(0)) revert InvalidSigner();
+        emit ExecutionRecorded(signer, payloadHash, block.timestamp);
     }
 }

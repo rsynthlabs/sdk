@@ -25,6 +25,7 @@ sdk/
 │       ├── payload.py        # Payload dataclass + canonical_bytes()
 │       ├── sign.py           # sign(), verify() — EIP-191 over canonical bytes
 │       ├── anchor.py         # anchor() — submit ExecutionLog.record() tx
+│       ├── fetch.py          # verify_anchor() — read back ExecutionRecorded event
 │       └── errors.py
 └── tests/
     └── __init__.py
@@ -140,6 +141,14 @@ Module docstring: references SCHEMA.md §4.
 Define:
 - `def anchor(payload: Payload, signature: bytes, rpc_url: str, contract_addr: str, sender_key: str) -> str:` — submits `ExecutionLog.record(payloadHash, signature)`, waits for receipt, returns the 0x-prefixed tx hash. Raises `AnchorRevertedError` if the tx mines with `status == 0`. `sender_key` may differ from the signer (relayer pattern).
 - `class AnchorRevertedError(Exception)` — carries `tx_hash: str`.
+
+### `sdk/src/rsynth/fetch.py`
+
+Module docstring: references SCHEMA.md §4.
+
+Define:
+- `def verify(tx_hash: str, rpc_url: str, contract_addr: str) -> tuple[str, bytes]:` — fetches the `ExecutionRecorded` event from the tx receipt at `tx_hash`, returns `(signer_address, payload_hash)`. Raises `AnchorNotFoundError` if the receipt has no matching event from `contract_addr`. Caller compares the returned hash against `payload_hash(payload)` to confirm anchor integrity. Re-exported at the package level as `verify_anchor` to avoid clashing with `sign.verify`.
+- `class AnchorNotFoundError(Exception)` — carries `tx_hash: str`.
 
 ### `sdk/src/rsynth/errors.py`
 

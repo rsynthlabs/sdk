@@ -24,7 +24,7 @@ sdk/
 │       ├── __init__.py
 │       ├── payload.py        # Payload dataclass + canonical_bytes()
 │       ├── sign.py           # sign(), verify() — EIP-191 over canonical bytes
-│       ├── anchor.py         # write_hash(), read_hash() — contract interaction
+│       ├── anchor.py         # anchor() — submit ExecutionLog.record() tx
 │       └── errors.py
 └── tests/
     └── __init__.py
@@ -138,8 +138,8 @@ Define:
 Module docstring: references SCHEMA.md §4.
 
 Define:
-- `def write_hash(agent_id: int, payload_hash: bytes, signature: bytes, rpc_url: str, contract: str, private_key: str) -> str:` — `NotImplementedError`. Returns transaction hash.
-- `def read_hash(agent_id: int, payload_hash: bytes, rpc_url: str, contract: str) -> dict | None:` — `NotImplementedError`. Returns event data or `None`.
+- `def anchor(payload: Payload, signature: bytes, rpc_url: str, contract_addr: str, sender_key: str) -> str:` — submits `ExecutionLog.record(payloadHash, signature)`, waits for receipt, returns the 0x-prefixed tx hash. Raises `AnchorRevertedError` if the tx mines with `status == 0`. `sender_key` may differ from the signer (relayer pattern).
+- `class AnchorRevertedError(Exception)` — carries `tx_hash: str`.
 
 ### `sdk/src/rsynth/errors.py`
 

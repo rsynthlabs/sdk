@@ -18,6 +18,13 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8.0", "eth-tester[pyevm]>=0.12.0b1"]
+example = [
+  "lerobot>=0.4,<0.5",
+  "numpy>=1.26",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "../examples"]
 
 [project.urls]
 Homepage = "https://rsynth.ai"

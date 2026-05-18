@@ -337,3 +337,10 @@ DeclarationError: Identifier already declared.
 ```
 
 When naming identifiers in a forge-std-importing contract, avoid `log` — pick something descriptive (e.g. `ExecutionRecorded` for an event, `executionLog` for a state variable holding a contract instance).
+
+---
+
+## Schema mirroring
+
+`SCHEMA.md` in this repo mirrors `rsynthlabs/r-execution-spec`.
+Edits must go to the spec repo first, then sync here. Drift = bug.

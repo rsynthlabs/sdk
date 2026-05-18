@@ -80,7 +80,7 @@ The keccak256 hash of the canonical byte sequence is the **payload hash** refere
 The payload is signed by the agent's key registered in ERC-8004.
 
 - **Algorithm:** secp256k1 (Ethereum-standard).
-- **Signed message:** EIP-191 personal-sign over the canonical payload bytes.
+- **Signed message:** EIP-191 personal-sign over keccak256(canonical_bytes(payload)) (32 bytes).
 - **Output:** 65-byte signature `(r, s, v)`.
 
 Verification: recover the signer address from the signature and confirm it matches the address registered for `agent_id` in the ERC-8004 registry.

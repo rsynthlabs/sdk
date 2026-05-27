@@ -22,3 +22,6 @@ broadcast/
 # Env
 .env
 .env.local
+
+# Scripts output
+scripts/output/

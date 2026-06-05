@@ -22,6 +22,13 @@ class Metrics(BaseModel):
     end_variance: float
 
 
+class PolicyMeta(BaseModel):
+    id: str
+    parent_id: str | None = None
+    source_uri: str
+    lineage_chain: list[str] | None = Field(default=None, max_length=16)
+
+
 class Payload(BaseModel):
     version: str
     agent_id: int
@@ -35,6 +42,7 @@ class Payload(BaseModel):
     metrics: Metrics
     score: float = Field(ge=0, le=1)
     outcome: Outcome
+    policy: PolicyMeta | None = None
 
 
 def canonical_bytes(payload: Payload | dict[str, Any]) -> bytes:
@@ -44,6 +52,10 @@ def canonical_bytes(payload: Payload | dict[str, Any]) -> bytes:
     no trailing newline. Accepts a Payload model or a JSON-serializable dict.
     """
     data = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
+    # additive v0.2: drop an unset `policy` block so v0.1 payloads hash
+    # byte-identically; nested nulls (parent_id, lineage_chain) are preserved.
+    if isinstance(data, dict) and "policy" in data and data["policy"] is None:
+        data = {k: v for k, v in data.items() if k != "policy"}
     return json.dumps(
         data,
         sort_keys=True,

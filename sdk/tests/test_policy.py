@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+from rsynth.fetch import LineageError, _validate_lineage
 from rsynth.payload import Payload, PolicyMeta, canonical_bytes, payload_hash
 
 from .test_payload import SCHEMA_EXAMPLE, SCHEMA_EXAMPLE_HASH
@@ -69,3 +70,76 @@ def test_lineage_chain_max_16():
     PolicyMeta(id=ID, source_uri=POLICY["source_uri"], lineage_chain=chain)
     with pytest.raises(ValidationError):
         PolicyMeta(id=ID, source_uri=POLICY["source_uri"], lineage_chain=chain + [PARENT])
+
+
+# --- v0.2 self-attested lineage validation (fetch._validate_lineage) ---
+
+
+def test_validate_lineage_happy():
+    assert _validate_lineage(Payload.model_validate(V02_EXAMPLE)) == [PARENT]
+
+
+def test_validate_lineage_no_policy_empty():
+    # v0.1 / no-policy payload: empty chain, never raises.
+    assert _validate_lineage(Payload.model_validate(SCHEMA_EXAMPLE)) == []
+
+
+def test_validate_lineage_root_empty_chain():
+    none = Payload.model_validate(
+        {**V02_EXAMPLE, "policy": {**POLICY, "parent_id": None, "lineage_chain": None}}
+    )
+    empty = Payload.model_validate(
+        {**V02_EXAMPLE, "policy": {**POLICY, "parent_id": None, "lineage_chain": []}}
+    )
+    assert _validate_lineage(none) == []
+    assert _validate_lineage(empty) == []
+
+
+def test_validate_lineage_broken_parent():
+    p = Payload.model_validate(
+        {**V02_EXAMPLE, "policy": {**POLICY, "lineage_chain": ["0x" + "99" * 32]}}
+    )
+    with pytest.raises(LineageError) as exc:
+        _validate_lineage(p)
+    assert exc.value.reason == "broken_parent"
+
+
+def test_validate_lineage_chain_without_parent():
+    p = Payload.model_validate(
+        {**V02_EXAMPLE, "policy": {**POLICY, "parent_id": None, "lineage_chain": [PARENT]}}
+    )
+    with pytest.raises(LineageError) as exc:
+        _validate_lineage(p)
+    assert exc.value.reason == "broken_parent"
+
+
+def test_validate_lineage_depth_overflow():
+    # Bypass the Pydantic max_length=16 cap to exercise the verify-side re-check.
+    p = Payload.model_validate(V02_EXAMPLE)
+    p.policy.lineage_chain = ["0x" + f"{i:064x}" for i in range(16)] + [PARENT]
+    with pytest.raises(LineageError) as exc:
+        _validate_lineage(p)
+    assert exc.value.reason == "depth_overflow"
+
+
+def test_validate_lineage_malformed_source_uri():
+    p = Payload.model_validate({**V02_EXAMPLE, "policy": {**POLICY, "source_uri": ""}})
+    with pytest.raises(LineageError) as exc:
+        _validate_lineage(p)
+    assert exc.value.reason == "malformed"
+
+
+def test_validate_lineage_malformed_empty_id():
+    p = Payload.model_validate({**V02_EXAMPLE, "policy": {**POLICY, "id": ""}})
+    with pytest.raises(LineageError) as exc:
+        _validate_lineage(p)
+    assert exc.value.reason == "malformed"
+
+
+def test_validate_lineage_malformed_empty_link():
+    p = Payload.model_validate(
+        {**V02_EXAMPLE, "policy": {**POLICY, "lineage_chain": ["", PARENT]}}
+    )
+    with pytest.raises(LineageError) as exc:
+        _validate_lineage(p)
+    assert exc.value.reason == "malformed"

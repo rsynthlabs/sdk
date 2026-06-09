@@ -1,8 +1,9 @@
 """rsynth — Verifiable Robot Execution SDK."""
 
 from .anchor import AnchorRevertedError, anchor
-from .fetch import AnchorNotFoundError
+from .fetch import AnchorMismatchError, AnchorNotFoundError, LineageError
 from .fetch import verify as verify_anchor
+from .fetch import verify_anchor_with_lineage
 from .payload import Payload, PolicyMeta, canonical_bytes, payload_hash
 from .sign import sign, verify
 
@@ -17,5 +18,8 @@ __all__ = [
     "anchor",
     "AnchorRevertedError",
     "verify_anchor",
+    "verify_anchor_with_lineage",
     "AnchorNotFoundError",
+    "AnchorMismatchError",
+    "LineageError",
 ]

@@ -44,6 +44,17 @@ class LineageError(Exception):
         super().__init__(f"Invalid policy lineage ({reason}): {message}")
 
 
+class VersionError(Exception):
+    """Raised when a payload's version string is inconsistent with its policy block.
+
+    `reason` is one of: unknown_version, policy_required, policy_forbidden.
+    """
+
+    def __init__(self, reason: str, message: str = ""):
+        self.reason = reason
+        super().__init__(f"Invalid payload version ({reason}): {message}")
+
+
 def verify(tx_hash: str, rpc_url: str, contract_addr: str) -> tuple[str, bytes]:
     """Fetch ExecutionRecorded event from a tx receipt.
 
@@ -105,6 +116,32 @@ def _validate_lineage(payload: Payload) -> list[str]:
     if chain and chain[-1] != policy.parent_id:
         raise LineageError("broken_parent", "newest lineage_chain link must equal parent_id")
     return chain
+
+
+def validate_version(payload: Payload) -> str:
+    """Validate version/policy consistency. See docs/v0.2/SCHEMA-DIFF.md §1.
+
+    "0.1.0" must NOT carry a policy block (legacy path); "0.2.0" MUST carry one
+    (lineage path); any other version is rejected. Dispatch is on the version
+    string, never on presence of the policy key. Returns the validated version.
+
+    Pure: never touches canonical_bytes / payload_hash / sign, so a v0.1
+    "0.1.0"/no-policy payload passes here and still hashes byte-identically.
+
+    Raises VersionError(reason=): policy_forbidden ("0.1.0" + policy),
+    policy_required ("0.2.0" + no policy), unknown_version (any other version).
+    """
+    version = payload.version
+    has_policy = payload.policy is not None
+    if version == "0.1.0":
+        if has_policy:
+            raise VersionError("policy_forbidden", "version 0.1.0 must not carry a policy block")
+        return version
+    if version == "0.2.0":
+        if not has_policy:
+            raise VersionError("policy_required", "version 0.2.0 requires a policy block")
+        return version
+    raise VersionError("unknown_version", f"unsupported payload version: {version!r}")
 
 
 def _verify_with_lineage(

@@ -147,6 +147,9 @@ def validate_version(payload: Payload) -> str:
 def _verify_with_lineage(
     w3: Web3, tx_hash: str, payload: Payload, contract_addr: str
 ) -> tuple[str, bytes, list[str]]:
+    # check order: version -> anchor -> lineage. validate_version is pure and
+    # local, so structurally invalid payloads fail fast before any rpc call.
+    validate_version(payload)
     signer, on_chain_hash = _verify(w3, tx_hash, contract_addr)
     if on_chain_hash != payload_hash(payload):
         raise AnchorMismatchError(tx_hash, "anchored hash does not match payload_hash(payload)")
@@ -158,13 +161,15 @@ def verify_anchor_with_lineage(
 ) -> tuple[str, bytes, list[str]]:
     """Verify an on-chain anchor and validate the payload's policy lineage.
 
-    Like `verify`, but takes the payload: it compares the anchored hash against
-    payload_hash(payload) itself (raising AnchorMismatchError on a mismatch) and
-    walks the self-attested policy.lineage_chain. Returns
+    Like `verify`, but takes the payload: it enforces version/policy dispatch
+    (validate_version), compares the anchored hash against payload_hash(payload)
+    (raising AnchorMismatchError on a mismatch), and walks the self-attested
+    policy.lineage_chain. Check order: version -> anchor -> lineage. Returns
     (signer_address, payload_hash_bytes32, policy_chain). policy_chain is the
-    validated lineage (oldest to newest), empty for a v0.1 / no-policy payload.
+    validated lineage (oldest to newest), empty for a v0.1 payload.
 
-    Raises AnchorNotFoundError (no record at tx_hash), AnchorMismatchError
+    Raises VersionError (unknown version or version/policy mismatch),
+    AnchorNotFoundError (no record at tx_hash), AnchorMismatchError
     (hash mismatch), or LineageError (malformed / over-deep / broken lineage).
     """
     w3 = Web3(Web3.HTTPProvider(rpc_url))

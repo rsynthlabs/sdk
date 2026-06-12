@@ -7,6 +7,7 @@ from rsynth.fetch import (
     AnchorMismatchError,
     AnchorNotFoundError,
     LineageError,
+    VersionError,
     _verify,
     _verify_with_lineage,
 )
@@ -117,3 +118,36 @@ def test_verify_with_lineage_broken_lineage_after_valid_anchor(deployed):
     with pytest.raises(LineageError) as exc:
         _verify_with_lineage(w3, tx_hash, broken, addr)
     assert exc.value.reason == "broken_parent"
+
+
+def test_verify_with_lineage_version_policy_forbidden(deployed):
+    # The anchor and the self-attested chain are both valid; version dispatch
+    # still rejects a 0.1.0 payload carrying a policy block (SCHEMA-DIFF §1:
+    # dispatch on the version string, never on presence of the policy key).
+    w3, addr, _abi = deployed
+    p = Payload.model_validate({**SCHEMA_EXAMPLE, "policy": POLICY})
+    sig = sign(p, HARDHAT_KEY_0)
+    tx_hash = _anchor(w3, p, sig, addr, HARDHAT_KEY_0)
+    with pytest.raises(VersionError) as exc:
+        _verify_with_lineage(w3, tx_hash, p, addr)
+    assert exc.value.reason == "policy_forbidden"
+
+
+def test_verify_with_lineage_version_policy_required_before_rpc(deployed):
+    # Version dispatch is the first check: it fires before the anchor fetch,
+    # so a nonexistent tx_hash raises VersionError, not AnchorNotFoundError.
+    w3, addr, _abi = deployed
+    p = Payload.model_validate({**V02_EXAMPLE, "policy": None})
+    with pytest.raises(VersionError) as exc:
+        _verify_with_lineage(w3, "0x" + "00" * 32, p, addr)
+    assert exc.value.reason == "policy_required"
+
+
+def test_verify_with_lineage_unknown_version(deployed):
+    w3, addr, _abi = deployed
+    p = Payload.model_validate({**V02_EXAMPLE, "version": "0.3.0"})
+    sig = sign(p, HARDHAT_KEY_0)
+    tx_hash = _anchor(w3, p, sig, addr, HARDHAT_KEY_0)
+    with pytest.raises(VersionError) as exc:
+        _verify_with_lineage(w3, tx_hash, p, addr)
+    assert exc.value.reason == "unknown_version"

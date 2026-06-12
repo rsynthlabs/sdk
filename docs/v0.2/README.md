@@ -6,7 +6,7 @@ policy provenance for verifiable robot execution. additive over v0.1. spec phase
 
 ## status
 
-SPEC PHASE. no code, no contract changes, backward compatible with v0.1.
+IMPLEMENTED through increment 3 + version-wiring. no contract changes, backward compatible with v0.1.
 
 - v0.1 SDK + `ExecutionLog` contract continue working unchanged
 - v0.2 SDK reads v0.1 anchors via `version` string dispatch

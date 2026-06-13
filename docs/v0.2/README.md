@@ -6,11 +6,12 @@ policy provenance for verifiable robot execution. additive over v0.1. spec phase
 
 ## status
 
-IMPLEMENTED through increment 3 + version-wiring. no contract changes, backward compatible with v0.1.
+IMPLEMENTED through the policy registry increment: `PolicyRegistry.sol`, `registry.py` (register / on-chain chain walk), and an optional `registry_addr` cross-check in `verify_anchor_with_lineage`. backward compatible with v0.1.
 
 - v0.1 SDK + `ExecutionLog` contract continue working unchanged
 - v0.2 SDK reads v0.1 anchors via `version` string dispatch
 - no mandatory upgrade for downstream consumers
+- the shipped registry is storage-based (mapping + duplicate revert), diverging from the event-only option C sketch in `POLICY-LINEAGE.md` §5 - the spec needs updating to match
 
 ## contents
 

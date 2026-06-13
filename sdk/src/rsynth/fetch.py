@@ -13,6 +13,7 @@ from web3.exceptions import TransactionNotFound
 from web3.logs import DISCARD
 
 from .payload import Payload, payload_hash
+from .registry import _fetch_policy_chain
 
 _ABI = json.loads(files("rsynth.abi").joinpath("ExecutionLog.json").read_text())
 
@@ -34,9 +35,10 @@ class AnchorMismatchError(Exception):
 
 
 class LineageError(Exception):
-    """Raised when a payload's self-attested policy lineage is invalid.
+    """Raised when a payload's policy lineage is invalid.
 
-    `reason` is one of: malformed, depth_overflow, broken_parent.
+    `reason` is one of: malformed, depth_overflow, broken_parent (self-attested
+    checks), unregistered, chain_mismatch (on-chain registry cross-check).
     """
 
     def __init__(self, reason: str, message: str = ""):
@@ -144,33 +146,69 @@ def validate_version(payload: Payload) -> str:
     raise VersionError("unknown_version", f"unsupported payload version: {version!r}")
 
 
+def _crosscheck_registry(w3: Web3, payload: Payload, chain: list[str], registry_addr: str) -> None:
+    """Cross-check the self-attested chain against the on-chain registry.
+
+    Suffix rule: the on-chain walk is authoritative for the registered part of
+    the lineage — its hops must match the newest entries of the self-attested
+    chain. Self-attested entries older than where the walk stopped at an
+    unregistered parent are accepted as off-chain ancestors; but an on-chain
+    root (parentId == 0) is a positive "no parent" assertion, so older
+    self-attested entries beyond it contradict the record.
+    """
+    result = _fetch_policy_chain(w3, payload.policy.id, registry_addr)
+    if not result.registered:
+        raise LineageError("unregistered", f"policy {payload.policy.id} has no on-chain record")
+    k = len(result.chain)
+    if k > len(chain) or (k and chain[-k:] != result.chain):
+        raise LineageError("chain_mismatch", "on-chain chain does not match self-attested lineage_chain")
+    if result.terminal == "root" and len(chain) > k:
+        raise LineageError("chain_mismatch", "on-chain root contradicts older self-attested ancestors")
+
+
 def _verify_with_lineage(
-    w3: Web3, tx_hash: str, payload: Payload, contract_addr: str
+    w3: Web3, tx_hash: str, payload: Payload, contract_addr: str,
+    registry_addr: str | None = None,
 ) -> tuple[str, bytes, list[str]]:
-    # check order: version -> anchor -> lineage. validate_version is pure and
-    # local, so structurally invalid payloads fail fast before any rpc call.
+    # check order: version -> anchor -> lineage -> registry cross-check (the
+    # rpc-heaviest step, meaningless if earlier checks fail). validate_version
+    # is pure and local, so structurally invalid payloads fail fast before any
+    # rpc call.
     validate_version(payload)
     signer, on_chain_hash = _verify(w3, tx_hash, contract_addr)
     if on_chain_hash != payload_hash(payload):
         raise AnchorMismatchError(tx_hash, "anchored hash does not match payload_hash(payload)")
-    return signer, on_chain_hash, _validate_lineage(payload)
+    chain = _validate_lineage(payload)
+    if registry_addr is not None and payload.policy is not None:
+        _crosscheck_registry(w3, payload, chain, registry_addr)
+    return signer, on_chain_hash, chain
 
 
 def verify_anchor_with_lineage(
-    tx_hash: str, payload: Payload, rpc_url: str, contract_addr: str
+    tx_hash: str, payload: Payload, rpc_url: str, contract_addr: str,
+    registry_addr: str | None = None,
 ) -> tuple[str, bytes, list[str]]:
     """Verify an on-chain anchor and validate the payload's policy lineage.
 
     Like `verify`, but takes the payload: it enforces version/policy dispatch
     (validate_version), compares the anchored hash against payload_hash(payload)
     (raising AnchorMismatchError on a mismatch), and walks the self-attested
-    policy.lineage_chain. Check order: version -> anchor -> lineage. Returns
+    policy.lineage_chain. Check order: version -> anchor -> lineage ->
+    registry cross-check (optional). Returns
     (signer_address, payload_hash_bytes32, policy_chain). policy_chain is the
     validated lineage (oldest to newest), empty for a v0.1 payload.
 
+    When registry_addr is given and the payload carries a policy block, the
+    self-attested chain is additionally cross-checked against the on-chain
+    PolicyRegistry: the registered portion must match (suffix rule); ancestors
+    older than the registered portion may live off-chain. An unregistered
+    policy.id or a contradicting chain raises LineageError ("unregistered" /
+    "chain_mismatch"). For a v0.1 payload registry_addr is a no-op.
+
     Raises VersionError (unknown version or version/policy mismatch),
     AnchorNotFoundError (no record at tx_hash), AnchorMismatchError
-    (hash mismatch), or LineageError (malformed / over-deep / broken lineage).
+    (hash mismatch), or LineageError (malformed / over-deep / broken /
+    unregistered / mismatching lineage).
     """
     w3 = Web3(Web3.HTTPProvider(rpc_url))
-    return _verify_with_lineage(w3, tx_hash, payload, contract_addr)
+    return _verify_with_lineage(w3, tx_hash, payload, contract_addr, registry_addr)

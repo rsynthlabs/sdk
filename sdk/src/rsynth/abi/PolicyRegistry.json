@@ -1,0 +1,100 @@
+[
+  {
+    "type": "function",
+    "name": "policies",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "parentId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sourceUriHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "registrant",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "registeredBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "register",
+    "inputs": [
+      {
+        "name": "policyId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "parentId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sourceUriHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "PolicyRegistered",
+    "inputs": [
+      {
+        "name": "policyId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "parentId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "registrant",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sourceUriHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "PolicyAlreadyRegistered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroPolicyId",
+    "inputs": []
+  }
+]

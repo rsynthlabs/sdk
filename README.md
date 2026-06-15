@@ -71,7 +71,7 @@ cd contracts && forge build && forge test
 cd ../sdk && pip install -e '.[test]' && pytest -v
 ```
 
-expected: 4 forge tests + 28 pytest tests, all passing.
+expected: 4 forge tests + 78 pytest tests, all passing.
 
 ## roadmap
 

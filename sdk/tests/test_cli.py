@@ -4,10 +4,12 @@ import argparse
 import sys
 
 import pytest
+from web3 import Web3
 
 from rsynth.anchor import _anchor
-from rsynth.cli import _main, main
+from rsynth.cli import _lineage, _main, main
 from rsynth.payload import Payload
+from rsynth.registry import _register_policy
 from rsynth.sign import sign
 
 from .test_payload import SCHEMA_EXAMPLE
@@ -92,3 +94,78 @@ def test_cli_missing_rpc_url(monkeypatch, capsys):
     err = capsys.readouterr().err
     assert exc.value.code == 1
     assert "rpc" in err.lower()
+
+
+# --- lineage ---
+
+URI = "hf://lerobot/smolvla-base@a1b2c3d"
+
+
+def _pid(tag: str) -> str:
+    # The registry fixture is session-scoped and append-only, so every test
+    # derives its own policy ids from a unique tag to stay isolated.
+    return "0x" + bytes(Web3.keccak(text=tag)).hex()
+
+
+def _lineage_args(policy_id: str, registry_addr: str) -> argparse.Namespace:
+    return argparse.Namespace(
+        cmd="lineage",
+        policy_id=policy_id,
+        rpc_url=None,
+        registry_addr=registry_addr,
+    )
+
+
+def test_cli_lineage_root(deployed_registry, capsys):
+    w3, addr, _abi = deployed_registry
+    pid = _pid("cli-lin-root")
+    _register_policy(w3, pid, None, URI, addr, HARDHAT_KEY_0)
+    rc = _lineage(w3, _lineage_args(pid, addr))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert f"policy: {pid}" in out
+    assert "depth: 0" in out
+    assert "terminal: root" in out
+
+
+def test_cli_lineage_multi_hop_oldest_to_newest(deployed_registry, capsys):
+    w3, addr, _abi = deployed_registry
+    a, b, c = _pid("cli-lin-a"), _pid("cli-lin-b"), _pid("cli-lin-c")
+    _register_policy(w3, a, None, URI, addr, HARDHAT_KEY_0)
+    _register_policy(w3, b, a, URI, addr, HARDHAT_KEY_0)
+    _register_policy(w3, c, b, URI, addr, HARDHAT_KEY_0)
+    rc = _lineage(w3, _lineage_args(c, addr))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "depth: 2" in out
+    assert out.index(a) < out.index(b)  # ancestors printed oldest to newest
+
+
+def test_cli_lineage_unregistered(deployed_registry, capsys):
+    w3, addr, _abi = deployed_registry
+    rc = _lineage(w3, _lineage_args(_pid("cli-lin-missing"), addr))
+    err = capsys.readouterr().err
+    assert rc == 3
+    assert "not registered" in err.lower()
+
+
+def test_cli_lineage_invalid_id(deployed_registry, capsys):
+    w3, addr, _abi = deployed_registry
+    rc = _lineage(w3, _lineage_args("0x1234", addr))
+    err = capsys.readouterr().err
+    assert rc == 5
+    assert "invalid" in err.lower()
+
+
+def test_cli_lineage_missing_registry_addr(monkeypatch, capsys):
+    monkeypatch.delenv("RSYNTH_REGISTRY_ADDR", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["rsynth", "lineage", _pid("cli-lin-noaddr"), "--rpc-url", "http://localhost:8545"],
+    )
+    with pytest.raises(SystemExit) as exc:
+        main()
+    err = capsys.readouterr().err
+    assert exc.value.code == 1
+    assert "registry" in err.lower()

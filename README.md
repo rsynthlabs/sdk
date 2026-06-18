@@ -35,6 +35,7 @@ assert on_chain_hash == payload_hash(payload)
 ```bash
 rsynth verify <tx_hash> --rpc-url <url> --contract-addr <addr>
 rsynth verify <tx_hash> ... --payload payload.json   # also compares hash
+rsynth lineage <policy_id> --rpc-url <url> --registry-addr <addr>
 ```
 
 exit codes: `0=ok`, `1=misuse`, `2=hash mismatch`, `3=not found`, `4=rpc error`, `5=invalid payload`.
@@ -71,7 +72,7 @@ cd contracts && forge build && forge test
 cd ../sdk && pip install -e '.[test]' && pytest -v
 ```
 
-expected: 4 forge tests + 78 pytest tests, all passing.
+expected: 4 forge tests + 83 pytest tests, all passing.
 
 ## roadmap
 
